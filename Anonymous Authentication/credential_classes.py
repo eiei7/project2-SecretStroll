@@ -72,7 +72,7 @@ class SecretKey:
 
 class Signature:
   """Create a Signature object"""
-# sigma = (sigma1, sigma2) 
+  # sigma = (sigma1, sigma2)
   def __init__(self, sigma1: G1EP,
                      sigma2: G1EP) -> None:
 
@@ -80,7 +80,7 @@ class Signature:
     self.sigma2 = sigma2
 
   def get_signature(self):
-    return (self.sigma1, self.sigma2)
+    return self.sigma1, self.sigma2
 
 
 
@@ -96,18 +96,18 @@ class BlindSignature:
     self.issuer_attributes = issuer_attributes
 
   def get_sigmas(self):
-    return (self.sigma_prime_sub1, self.sigma_prime_sub2)
+    return self.sigma_prime_sub1, self.sigma_prime_sub2
 
 
 class AnonymousCredential:
   """Create an anonymous credential for user"""
 # 
-  def __init__(self, signature: tuple, attributes: AttributeMap) -> None:
+  def __init__(self, signature: Signature, attributes: AttributeMap) -> None:
     self.signature = signature
     self.attributes = attributes
 
   def get_credential(self):
-    return (self.signature, self.attributes)
+    return self.signature, self.attributes
 
 
 class PedersenKnowledgeProof:
@@ -121,6 +121,7 @@ class PedersenKnowledgeProof:
 
       self.challenge = challenge
       self.r = list_of_r_bind_attrs_idx[0]
+      # the key of the attribute is bind with the response [(key, response)...]
       self.list_of_r_bind_attrs = list_of_r_bind_attrs_idx[1:]
 
     def get_list_of_r(self):
@@ -146,20 +147,15 @@ class DisclosureProof:
     Store the randomized final signature, the disclosed attributes and the proof.
     """
     def __init__(self, signature: Signature,
-                       pi: PedersenKnowledgeProof,
-                       disclosure_attributes: AttributeMap) -> None:
+                       pi: PedersenKnowledgeProof) -> None:
         
       self.signature = signature
       self.pi = pi
-      self.disclosure_attributes = disclosure_attributes
 
     def get_signature(self):
       return self.signature
 
     def get_proof(self):
       return self.pi
-
-    def get_disclosure_attributes(self):
-      return self.disclosure_attributes
 
 
