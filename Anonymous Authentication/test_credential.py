@@ -95,10 +95,11 @@ def test_create_issue_request():
   """CASE: """
 
   attributes = [G1.order().random() for _ in range(MAX_N)]
+  user_attributes, issuer_attributes = randomly_split_attributes(attributes)
   sk, pk = generate_key(attributes)
-  attributes_map = {i + 1: attr for i, attr in enumerate(attributes)}
+  # attributes_map = {i + 1: attr for i, attr in enumerate(attributes)}
 
-  issue_request, state = create_issue_request(pk, attributes_map)
+  issue_request, state = create_issue_request(pk, user_attributes)
 
   assert isinstance(issue_request, IssueRequest)
   assert isinstance(issue_request.pi, PedersenKnowledgeProof)
@@ -198,6 +199,24 @@ def test_create_plus_verify_disclosure_proof():
 
 
 
+####################################
+## TOOLS METHODS FOR COMPUTATIONS ##
+####################################
+
+
+def randomly_split_attributes(
+    attributes: List[Attribute],
+) -> Tuple[AttributeMap, AttributeMap]:
+    """From the list of all attributes, split in 2 lists of indices mapped to their related attribute"""
+    L = len(attributes)
+    # creates shuffled dict with keys in [1,L]
+    shuffled_attributes = list(map(lambda i: (i[0] + 1, i[1]), enumerate(attributes)))
+    random.shuffle(shuffled_attributes)
+    split_index = random.randint(0, L)
+    user_attributes = dict(shuffled_attributes[:split_index])
+    issuer_attributes = dict(shuffled_attributes[split_index:])
+
+    return user_attributes, issuer_attributes
 
 
   
