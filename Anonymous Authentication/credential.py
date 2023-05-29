@@ -217,6 +217,7 @@ def create_disclosure_proof(
 
     r = GT.order().random()
     t = GT.order().random()
+    # randomized signature
     sigma_sub1, sigma_sub2 = credential.signature.get_signature()
     signature = Signature(sigma_sub1 ** r, (sigma_sub2 * (sigma_sub1 ** t)) ** r)
     sigma_prime_sub1, sigma_prime_sub2 = signature.get_signature()
@@ -225,7 +226,7 @@ def create_disclosure_proof(
     list_of_ath_power_of_Y_hat = [sigma_prime_sub1.pair(pk.list_of_Y_hat[idx - 1]) ** a for idx, a in hidden_attributes.items()]
     com = sigma_prime_sub1.pair(pk.g_hat) ** t * GT.prod(list_of_ath_power_of_Y_hat)
 
-    # left side: R
+    # left side: R (generate proof)
     H = len(hidden_attributes)
     # list_of_r[0] := x is a random num like t
     list_of_r = [GT.order().random() for _ in range(H + 1)] if H > 0 else [GT.order().random()]
@@ -243,10 +244,9 @@ def create_disclosure_proof(
 
     # input = (challenge, [r - challenge * t'] + [(idx, s_sub_r) for i in list_of_r])
     pi = PedersenKnowledgeProof(challenge.mod(GT.order()), [r_0] + list_of_s_sub_r_bind_idx)
-    
-    disclosure_attributes = {idx: attr for idx, attr in credential.attributes.items() if attr not in hidden_attributes.values()}
 
-    return DisclosureProof(signature, pi, disclosure_attributes)
+
+    return DisclosureProof(signature, pi)
     
 
 
@@ -266,23 +266,27 @@ def verify_disclosure_proof(
     disclosed_attributes = dict(sorted(disclosed_attributes.items()))
 
     if not check_attribute_map(pk, disclosed_attributes):
-      raise ValueError("Too much attributes or there are non-postive attribute in attributes list")
+      raise ValueError("Too much attributes or there are non-positive attribute in attributes list")
 
     (sigma_prime_sub1, sigma_prime_sub2) = disclosure_proof.signature.get_signature()
     if sigma_prime_sub1 == G1.unity():
        return False
 
-    # left side: com, note that -a_i in the set of diclosure attributes
+    # left side: com, note that -a_i in the set of disclosure attributes
     list_of_neg_ath_power_of_Y_hat = [sigma_prime_sub1.pair(pk.list_of_Y_hat[idx - 1]) ** (-a) 
                                           for idx, a in disclosed_attributes.items()] if D > 0 else []
     com = ((sigma_prime_sub2.pair(pk.g_hat)) * GT.prod(list_of_neg_ath_power_of_Y_hat)) / (sigma_prime_sub1.pair(pk.X_hat))
 
+    # recompute the commitment
     # get com^c
     com_to_the_c = com ** disclosure_proof.pi.challenge
     # get t' (:= r)
     t_prime = disclosure_proof.pi.get_r()
     R_prime = com_to_the_c * (sigma_prime_sub1.pair(pk.g_hat) ** t_prime)
+
+    # if there exist hidden attributes
     if len(pk) > D:
+      # get the list of response for hidden attributes
       list_of_r = disclosure_proof.pi.get_list_of_r()
       list_of_ath_power_of_Y_hat = [sigma_prime_sub1.pair(pk.list_of_Y_hat[idx - 1]) ** a for idx, a in list_of_r]
       R_prime *= GT.prod(list_of_ath_power_of_Y_hat)
