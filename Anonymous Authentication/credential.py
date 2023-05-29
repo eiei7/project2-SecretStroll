@@ -46,12 +46,13 @@ def generate_key(
     g = G1.generator()
     g_hat = G2.generator()
     x = G1.order().random()
+    # same length as n(L)
     list_of_y = [G1.order().random() for _ in range(n)]
 
     pk = PublicKey(x, g, g_hat, list_of_y, attributes)
     sk = SecretKey(x, g, list_of_y, attributes)
 
-    return (sk, pk)
+    return sk, pk
     
 
 def sign(
@@ -61,7 +62,7 @@ def sign(
     """ Sign the vector of messages `msgs` """
     n = len(msgs)
     if n != len(sk):
-      raise ValueError("Length of messages should euqal to length of secret key")
+      raise ValueError("Length of messages should equal to length of secret key")
 
     for msg in msgs:
       if not isinstance(jsonpickle.decode(msg), Bn):
@@ -83,13 +84,14 @@ def verify(
     """ Verify the signature on a vector of messages """
     n = len(msgs)
     if n != len(pk):
-      raise ValueError("Length of messages should euqal to length of public key")
+      raise ValueError("Length of messages should equal to length of public key")
 
     for msg in msgs:
       if not isinstance(jsonpickle.decode(msg), Bn):
         raise TypeError("All messages should be jsonpickle encoded Bn objects")
     
     (sigma1, sigma2) = signature.get_signature()
+    # check that σ1 is not the unity element in G1
     if sigma1 == G1.unity():
        return False
       
@@ -120,10 +122,11 @@ def create_issue_request(
     *Warning:* You may need to pass state to the `obtain_credential` function.
     """
     if not check_attribute_map(pk, user_attributes):
-      raise ValueError("Too much attributes or there are non-postive attribute in attributes list")
+      raise ValueError("Too much attributes or there are non-positive attribute in attributes list")
 
     t = G1.order().random()
 
+    # pk.list_of_Y's index range[0, L-1], the user_attributes() key's range [1, L]
     list_of_ath_power_of_Y = [pk.list_of_Y[i - 1] ** a for i, a in user_attributes.items()]
     user_commitment = (pk.g ** t) * G1.prod(list_of_ath_power_of_Y)
 
@@ -143,8 +146,9 @@ def sign_issue_request(
     This corresponds to the "Issuer signing" step in the issuance protocol.
     """
     if not check_attribute_map(pk, issuer_attributes):
-      raise ValueError("Too much attributes or there are non-postive attribute in attributes list")
+      raise ValueError("Too much attributes or there are non-positive attribute in attributes list")
 
+    # issuer verify the proof before signing
     if not created_issue_request_knowledge_proof(request, pk):
         raise ValueError("Incorrect proof of knowledge associated with a created issue request")
 
@@ -170,12 +174,13 @@ def obtain_credential(
 
     if not check_attribute_map(pk, response.issuer_attributes
                                ) or not check_attribute_map(pk,
-                               response.issuer_attributes):
-      raise ValueError("Too much attributes or there are non-postive attribute in attributes list")
+                               user_attributes):
+      raise ValueError("Too much attributes or there are non-positive attribute in attributes list")
 
     if len(user_attributes) + len(response.issuer_attributes) != len(pk):
-      raise ValueError("Length of messages should euqal to length of public key")
- 
+      raise ValueError("Length of messages should equal to length of public key")
+
+    # final signature
     signature = Signature(response.sigma_prime_sub1,
                           response.sigma_prime_sub2 / (response.sigma_prime_sub1 ** t))
     
@@ -184,7 +189,8 @@ def obtain_credential(
         sorted((user_attributes | response.issuer_attributes).items())
     )
 
-    if not verify(pk, signature, bn_list_to_bytes_list(attributes.values())):
+    # check if the signature on the attributes is valid
+    if not verify(pk, signature, bn_list_to_bytes_list(list(attributes.values()))):
         raise ValueError(
             "The provided signature is not valid for all the given attributes"
         )
@@ -207,7 +213,7 @@ def create_disclosure_proof(
     if not check_attribute_map(pk, credential.attributes
                                ) or not check_attribute_map(pk,
                                hidden_attributes):
-      raise ValueError("Too much attributes or there are non-postive attribute in attributes list")
+      raise ValueError("Too much attributes or there are non-positive attribute in attributes list")
 
     r = GT.order().random()
     t = GT.order().random()
