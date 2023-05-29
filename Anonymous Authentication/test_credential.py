@@ -92,12 +92,11 @@ def test_sign_fail_case2():
 
 
 def test_create_issue_request():
-  """CASE: """
+  """CASE: check if the issue_request contained the proof is correctly generated"""
 
   attributes = [G1.order().random() for _ in range(MAX_N)]
   user_attributes, issuer_attributes = randomly_split_attributes(attributes)
   sk, pk = generate_key(attributes)
-  # attributes_map = {i + 1: attr for i, attr in enumerate(attributes)}
 
   issue_request, state = create_issue_request(pk, user_attributes)
 
@@ -109,11 +108,11 @@ def test_create_issue_request():
 
 
 def test_sign_issue_request():
-  """CASE: """
+  """CASE: check if the proof provided by prover is valid and verify the signature"""
   
   attributes = [G1.order().random() for _ in range(2 * MAX_N)]
   sk, pk = generate_key(attributes)
-  
+
   user_attributes = {i + 1: attr for i, attr in enumerate(attributes[:MAX_N])}
   issuer_attributes = {i + len(user_attributes) + 1: attr for i, attr in enumerate(attributes[MAX_N:])}
 
@@ -131,7 +130,7 @@ def test_sign_issue_request():
 
 
 def test_obtain_credential():
-  """CASE: """
+  """CASE: check if the signature on the given attributes is valid. If valid, generate the final signature """
 
   attributes = [G1.order().random() for _ in range(2 * MAX_N)]
   sk, pk = generate_key(attributes)
@@ -152,12 +151,12 @@ def test_obtain_credential():
 
   assert isinstance(credential, AnonymousCredential)
 
-  print("Obtain credentail test passed")
+  print("Obtain credential test passed")
 
 
 
 def test_create_plus_verify_disclosure_proof():
-  """CASE: """
+  """CASE: check if the user possess the valid credential"""
 
   attributes = [G1.order().random() for _ in range(2 * MAX_N)]
   sk, pk = generate_key(attributes)
@@ -178,7 +177,7 @@ def test_create_plus_verify_disclosure_proof():
 
   assert isinstance(credential, AnonymousCredential)
 
-  suffled_attributes = random.sample(attributes, len(attributes))
+  shuffled_attributes = random.sample(attributes, len(attributes))
 
   hidden_attributes = {i + 1: attr for i, attr in enumerate(attributes[:MAX_N])}
   disclosed_attributes = {i + len(user_attributes) + 1: attr for i, attr in enumerate(attributes[MAX_N:])}
