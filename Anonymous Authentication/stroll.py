@@ -8,68 +8,13 @@ from petrelic.bn import Bn
 from petrelic.multiplicative.pairing import G1
 
 from credential import *
+from stroll_helper import *
 
 # Optional import
 from serialization import jsonpickle
 
 # Type aliases
 State = Any
-
-
-def string_to_bn(str_attribute: str) -> Bn:
-    """transform the subscription from the string type to Bn type"""
-    attribute = Bn.from_binary(sha256(str_attribute.encode()).digest()).mode(G1.order())
-    return attribute
-
-
-def check_subscription_valid(pk: PublicKey, attributes: List[Attribute]) -> bool:
-    """check if the subscription(attribute) provided is unknown"""
-    for attribute in attributes:
-        if attribute not in pk.attributes:
-            return False
-    return True
-
-
-# def get_rest_of_attributes(pk: PublicKey, attributes: List[Attribute]) -> List[Attribute]:
-#     """get attributes other than the parameter in all attributes """
-#     rest = list()
-#     for attribute in pk.attributes:
-#         if attribute not in attributes:
-#             rest.append(attribute)
-#     return rest
-
-
-def build_attribute_map_for_all_attributes(attributes: List[Bn]) -> AttributeMap:
-    """transform all attributes from List[Bn] to AttributeMap type"""
-    all_attributes = {idx + 1: a for idx, a in enumerate(sorted(attributes))}
-
-    return all_attributes
-
-
-def generate_issuer_attributes(pk: PublicKey, chosen_attributes: List[Bn]) -> AttributeMap:
-    """generate the AttributeMap for issuer attributes"""
-    # transform all attributes from List[Bn] to AttributeMap
-    all_attributes = build_attribute_map_for_all_attributes(pk.attributes)
-    issuer_attributes = dict()
-    for index, attribute in all_attributes.items():
-        if attribute in chosen_attributes:
-            issuer_attributes[index] = attribute
-        else:
-            issuer_attributes[index] = string_to_bn('None')
-
-    return issuer_attributes
-
-
-def generate_disclosed_attributes(pk: PublicKey, revealed_attributes: List[Bn]) -> AttributeMap:
-    """generate the AttributeMap for disclosed attributes"""
-    # transform all attributes from List[Bn] to AttributeMap
-    all_attributes = build_attribute_map_for_all_attributes(pk.attributes)
-    disclosed_attributes = dict()
-    for index, attribute in all_attributes.items():
-        if attribute in revealed_attributes:
-            disclosed_attributes[index] = attribute
-
-    return disclosed_attributes
 
 
 class Server:
@@ -107,7 +52,7 @@ class Server:
         ###############################################
         # TODO: Complete this function.
         ###############################################
-        attributes = list(map(lambda s: string_to_bn(s), sorted(subscriptions)))
+        attributes = list_of_string_to_bn(['None'] + sorted(subscriptions))
         sk, pk = generate_key(attributes)
         # encode sk, pk to bytes
         server_sk = jsonpickle.encode(sk).encode()
@@ -149,14 +94,14 @@ class Server:
             raise TypeError('The type of parameter is wrong')
 
         # transform the user_attributes from List[str] to List[Bn]
-        user_attributes = list(map(lambda s: string_to_bn(s), sorted(subscriptions)))
+        user_attributes = list_of_string_to_bn(subscriptions)
 
         # check if the subscription user provide is unknown
         if not check_subscription_valid(pk, user_attributes):
-            raise ValueError('The subscription type provided is unknown')
+            raise ValueError('The subscription type user provided is unknown')
 
-        # generate AttributeMap for issuer_attributes
-        issuer_attributes = generate_issuer_attributes(pk, user_attributes)
+        # generate AttributeMap for issuer_attributes, the length is same as pk.attributes, but key's range is [1, L]
+        issuer_attributes = generate_issuer_attributes(pk, user_attributes, username)
 
         blind_signature = sign_issue_request(sk, pk, issue_request, issuer_attributes)
 
@@ -164,7 +109,7 @@ class Server:
 
     @staticmethod
     def check_request_signature(
-            server_pk: bytes,
+        server_pk: bytes,
         message: bytes,
         revealed_attributes: List[str],
         signature: bytes
@@ -190,10 +135,10 @@ class Server:
         if not isinstance(pk, PublicKey) or not isinstance(disclosure_proof, DisclosureProof):
             raise TypeError('The type of parameter is wrong')
 
-        revealed_attributes = list(map(lambda a: string_to_bn(a), revealed_attributes))
+        revealed_attributes = list_of_string_to_bn(revealed_attributes)
         # check if the revealed_attribute is unknown
         if not check_subscription_valid(pk, revealed_attributes):
-            raise ValueError('The subscription type provided is unknown')
+            raise ValueError('The subscription type user provided is unknown')
 
         # generate AttributeMap for disclosed_attributes
         disclosed_attributes = generate_disclosed_attributes(pk, revealed_attributes)
